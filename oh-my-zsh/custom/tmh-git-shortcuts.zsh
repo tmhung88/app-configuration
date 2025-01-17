@@ -24,7 +24,7 @@ vpull() {
     echo ">>> $(date +"%Y-%m-%d %H:%M:%S") Merged with the latest $master"
 }
 
-# vpull        update the local master
+# vupdate        update the local master
 vupdate() {
     local master
     master=$(resolve_master_branch) || return 1 
