@@ -21,19 +21,56 @@ _branch_autocomplete() {
     COMPREPLY=($(compgen -W "$branches" -- "$cur_word"))
 }
 
-# vclean        delete all remote branches except for origin/master and origin/main
+
+# vclean            delete all remote branches except for origin/master and origin/main
+# vclean -local     Perform the task above plus delete all local branches except for master, and main. It requires a confirmation YES to proceed
 vclean() {
-    git branch -r | grep 'origin/' | grep -Ev 'origin/(master|main)$' | sed 's/origin\///' | xargs -I {} git branch -r -d origin/{}
-    # Delete all local tags in batches to avoid argument length errors
+    local option="$1"
+
+    if [[ "$option" == "-local" || "$option" == "-l" ]]; then
+        echo ">>> This will delete all local branches except 'master' and 'main'."
+        echo ">>> Type 'YES' to confirm:"
+        read -r confirmation
+
+        if [[ "$confirmation" == "YES" ]]; then
+            echo ">>> Deleting all local branches except 'master', 'main', and the current branch..."
+            # Get the current branch
+            local current_branch
+            current_branch=$(git rev-parse --abbrev-ref HEAD)
+
+            # Get all branches except 'master', 'main', and the current branch
+            git branch --format="%(refname:short)" | grep -Ev "^(master|main|$current_branch)$" | while read -r branch; do
+                echo ">>> Deleting branch: $branch"
+                git branch -D "$branch"
+            done
+
+            echo ">>> $(date +"%Y-%m-%d %H:%M:%S") Deleted all local branches except 'master', 'main'."
+        else
+            echo ">>> Skip local branch deletion. Cleaning up remote tracking branches and tags as usual..."
+        fi
+    fi
+
+    # Default behavior: Clean up remote branches and tags
+    git fetch origin "$master" --no-tags --prune
+
+    # Delete all remote-tracking branches except origin/master and origin/main
+    git branch -r | grep 'origin/' | grep -Ev 'origin/(master|main)$' | while IFS= read -r remote_branch; do
+        branch_name=${remote_branch#origin/}
+        git branch -r -d "$remote_branch" 2>/dev/null || echo ">>> Warning: $remote_branch could not be deleted"
+    done
+
+    # Delete all local tags in batches to prevent argument length errors
     git tag | xargs -n 100 git tag -d
-    echo ">>> $(date +"%Y-%m-%d %H:%M:%S") Cleaned up remote branches/tags ====="
+
+    echo ">>> $(date +"%Y-%m-%d %H:%M:%S") Cleaned up remote branches and tags ====="
 }
+
 
 # vpull        update the local master, and merge with the current branch
 vpull() {
     local master
     master=$(_resolve_master) || return 1 
-    git fetch origin "$master" --no-tags
+    git fetch origin "$master" --no-tags --prune
     git merge "origin/$master" --no-edit
     echo ">>> $(date +"%Y-%m-%d %H:%M:%S") Merged with the latest $master"
 }
@@ -42,7 +79,7 @@ vpull() {
 vupdate() {
     local master
     master=$(_resolve_master) || return 1 
-    git fetch origin "$master" --no-tags
+    git fetch origin "$master" --no-tags --prune
     git merge "origin/$master" --no-edit
     echo ">>> $(date +"%Y-%m-%d %H:%M:%S") $master updated"
 }
@@ -83,7 +120,7 @@ vcheckout() {
 
     # Skip fetch if -off flag is set
     if ! $skip_fetch; then
-        git fetch origin "$master" --no-tags
+        git fetch origin "$master" --no-tags --prune
         git merge "origin/$master" --no-edit
     else
         echo ">>> Skipping fetch due to -off flag"
