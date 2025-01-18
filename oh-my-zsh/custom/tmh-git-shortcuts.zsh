@@ -21,6 +21,39 @@ _branch_autocomplete() {
     COMPREPLY=($(compgen -W "$branches" -- "$cur_word"))
 }
 
+# _update_master: update the local master
+_update_master() {
+    local master
+    master=$(_resolve_master) || return 1 
+    git fetch origin "$master" --no-tags --prune || {
+        echo ">>> Failed to fetch origin/$master"
+        return 1
+    }
+    
+    # check if the current branch is master
+   if [ "$(git symbolic-ref --short HEAD)" = "$master" ]; then
+        git merge "origin/$master" || {
+            echo ">>> Failed to merge origin/$master into $master"
+            return 1
+        }
+    else
+        git branch -f "$master" "origin/$master" || {
+            echo ">>> Failed to force-update local $master to origin/$master"
+            return 1
+        }
+    fi
+    echo ">>> $(date +"%Y-%m-%d %H:%M:%S") $master updated"
+}
+
+# vpull: update the local master and merge with the current branch
+vpull() {
+    _update_master || return 1
+    local master
+    master=$(_resolve_master) || return 1
+    git merge "$master" --no-edit
+    echo ">>> $(date +"%Y-%m-%d %H:%M:%S") Merged with the latest $master"
+}
+
 
 # vclean            delete all remote branches except for origin/master and origin/main
 # vclean -local     Perform the task above plus delete all local branches except for master, and main. It requires a confirmation YES to proceed
@@ -50,12 +83,12 @@ vclean() {
         fi
     fi
 
-    # Default behavior: Clean up remote branches and tags
-    git fetch origin "$master" --no-tags --prune
+    # prune stale remote
+    _update_master || return 1
 
     # Delete all remote-tracking branches except origin/master and origin/main
     git branch -r | grep 'origin/' | grep -Ev 'origin/(master|main)$' | while IFS= read -r remote_branch; do
-        branch_name=${remote_branch#origin/}
+        remote_branch=$(echo "$remote_branch" | xargs)
         git branch -r -d "$remote_branch" 2>/dev/null || echo ">>> Warning: $remote_branch could not be deleted"
     done
 
@@ -63,25 +96,6 @@ vclean() {
     git tag | xargs -n 100 git tag -d
 
     echo ">>> $(date +"%Y-%m-%d %H:%M:%S") Cleaned up remote branches and tags ====="
-}
-
-
-# vpull        update the local master, and merge with the current branch
-vpull() {
-    local master
-    master=$(_resolve_master) || return 1 
-    git fetch origin "$master" --no-tags --prune
-    git merge "origin/$master" --no-edit
-    echo ">>> $(date +"%Y-%m-%d %H:%M:%S") Merged with the latest $master"
-}
-
-# vupdate        update the local master
-vupdate() {
-    local master
-    master=$(_resolve_master) || return 1 
-    git fetch origin "$master" --no-tags --prune
-    git merge "origin/$master" --no-edit
-    echo ">>> $(date +"%Y-%m-%d %H:%M:%S") $master updated"
 }
 
 ##
@@ -120,8 +134,7 @@ vcheckout() {
 
     # Skip fetch if -off flag is set
     if ! $skip_fetch; then
-        git fetch origin "$master" --no-tags --prune
-        git merge "origin/$master" --no-edit
+        _update_master || return 1
     else
         echo ">>> Skipping fetch due to -off flag"
     fi
