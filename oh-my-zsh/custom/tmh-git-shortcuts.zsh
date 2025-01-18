@@ -45,6 +45,16 @@ _update_master() {
     echo ">>> $(date +"%Y-%m-%d %H:%M:%S") $master updated"
 }
 
+# vpush     same behavior of git push
+vpush() {
+    git push "$@"
+}
+
+# vlog     same behavior of git log
+vlog() {
+    git log "$@"
+}
+
 # vpull: update the local master and merge with the current branch
 vpull() {
     _update_master || return 1
