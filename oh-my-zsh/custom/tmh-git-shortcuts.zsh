@@ -24,7 +24,8 @@ _branch_autocomplete() {
 # vclean        delete all remote branches except for origin/master and origin/main
 vclean() {
     git branch -r | grep 'origin/' | grep -Ev 'origin/(master|main)$' | sed 's/origin\///' | xargs -I {} git branch -r -d origin/{}
-    git tag -d $(git tag)
+    # Delete all local tags in batches to avoid argument length errors
+    git tag | xargs -n 100 git tag -d
     echo ">>> $(date +"%Y-%m-%d %H:%M:%S") Cleaned up remote branches/tags ====="
 }
 
@@ -32,16 +33,17 @@ vclean() {
 vpull() {
     local master
     master=$(_resolve_master) || return 1 
-    git fetch origin "$master:$master" --no-tags
-    git merge "$master" --no-edit
+    git fetch origin "$master" --no-tags
+    git merge "origin/$master" --no-edit
     echo ">>> $(date +"%Y-%m-%d %H:%M:%S") Merged with the latest $master"
 }
 
-# vpull        update the local master
+# vupdate        update the local master
 vupdate() {
     local master
     master=$(_resolve_master) || return 1 
-    git fetch origin "$master:$master" --no-tags
+    git fetch origin "$master" --no-tags
+    git merge "origin/$master" --no-edit
     echo ">>> $(date +"%Y-%m-%d %H:%M:%S") $master updated"
 }
 
@@ -81,7 +83,8 @@ vcheckout() {
 
     # Skip fetch if -off flag is set
     if ! $skip_fetch; then
-        git fetch origin "$master:$master" --no-tags
+        git fetch origin "$master" --no-tags
+        git merge "origin/$master" --no-edit
     else
         echo ">>> Skipping fetch due to -off flag"
     fi
