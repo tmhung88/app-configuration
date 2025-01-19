@@ -11,7 +11,7 @@ _resolve_master() {
 }
 
 # description: enable branch autocompletion
-# complete -F _branch_autocomplete vcheckout  --- enable autocompletion for vcheckout
+# complete -F _branch_autocomplete vcheck  --- enable autocompletion for vcheck
 _branch_autocomplete() {
     # Use git's branch completion for the first argument
     local cur_word="${COMP_WORDS[COMP_CWORD]}"
@@ -109,12 +109,12 @@ vclean() {
 }
 
 ##
-# vcheckout test-branch             update the local master. If test-branch doesn't exist, create it off the latest master
-# vcheckout test-branch             update the local master, If test-branch exists, merge with the last master, then switch
-# vcheckout test-branch -off        The -off flag skips the master update in case it takes too long, or internet is unavailable
-# vcheckout test-branch -cur        The -cur flag performs creating/merging the test-branch with the current branch
-# vcheckout test-branch -c -o       The -o, -c are short forms of -off, -cur. They can be inputted in any order as long as after the branch
-vcheckout() {
+# vcheck test-branch             update the local master. If test-branch doesn't exist, create it off the latest master
+# vcheck test-branch             update the local master, If test-branch exists, merge with the last master, then switch
+# vcheck test-branch -off        The -off flag skips the master update in case it takes too long, or internet is unavailable
+# vcheck test-branch -cur        The -cur flag performs creating/merging the test-branch with the current branch
+# vcheck test-branch -c -o       The -o, -c are short forms of -off, -cur. They can be inputted in any order as long as after the branch
+vcheck() {
     local target_branch="$1" # Get the branch name from the first argument
     shift                    # Shift to handle the rest of the arguments (flags)
 
@@ -185,5 +185,5 @@ vcheckout() {
     fi
 }
 
-# Register the completion function for vcheckout
-complete -F _branch_autocomplete vcheckout
+# Register the completion function for vcheck
+complete -F _branch_autocomplete vcheck
